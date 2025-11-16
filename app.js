@@ -215,6 +215,57 @@ function addHistoryRecord({ type, source, status, downloadUrl, time }, options =
 }
 
 /**
+ * 根据页面 URL 猜一个比较稳定的文件名（不含扩展名）
+ * 主要用于给“只识别 URL 的下载工具”提供一个看得过去的文件名
+ */
+function guessFilenameFromPageUrl(pageUrl) {
+  try {
+    const urlObj = new URL(pageUrl);
+    const segments = urlObj.pathname.split("/").filter(Boolean);
+    let slug = segments[segments.length - 1] || "video";
+
+    // 去掉常见无意义片段
+    if (slug === "video" && segments.length > 1) {
+      slug = segments[segments.length - 2];
+    }
+
+    // 仅保留简单字符，避免在某些下载工具里出问题
+    slug = slug
+      .replace(/[\s]+/g, "_")
+      .replace(/[^a-zA-Z0-9_\-]+/g, "")
+      .slice(0, 60);
+
+    if (!slug) slug = "video";
+    return slug;
+  } catch {
+    return "video";
+  }
+}
+
+/**
+ * 构造“下载工具专用链接”，在原 downloadUrl 末尾附加文件名
+ * 例如： http://localhost:3005/29ie  ->  http://localhost:3005/29ie/xxxxx.ts
+ * 注意：这里假设后端路由只依赖前半段（例如 /29ie），会忽略末尾的文件名部分
+ */
+function buildToolFriendlyDownloadUrl(downloadUrl, pageUrl) {
+  if (!downloadUrl) return "";
+  const base = downloadUrl.replace(/\/+$/, "");
+  const filename = guessFilenameFromPageUrl(pageUrl);
+  // 默认用 .ts，你也可以按需改成 .mp4
+  return `${base}/${encodeURIComponent(filename)}.ts`;
+}
+
+/**
+ * 将一组“下载工具专用链接”写入文本框，供用户复制
+ */
+function setBatchDownloadLinksForTool(links) {
+  const textarea = document.getElementById("batchDownloadLinksForTool");
+  if (!textarea) return;
+  const list = (links || []).filter(Boolean);
+  textarea.value = list.join("\n");
+}
+
+/**
  * 构造通用请求 headers
  */
 function buildHeaders() {
@@ -523,6 +574,8 @@ async function handleProcess() {
 
       const ok = data && data.success;
       const downloadUrl = data && data.downloadUrl;
+      const toolUrl =
+        ok && downloadUrl ? buildToolFriendlyDownloadUrl(downloadUrl, url) : "";
 
       addHistoryRecord({
         type: "process",
@@ -530,6 +583,13 @@ async function handleProcess() {
         status: ok ? "成功" : "失败",
         downloadUrl: downloadUrl || "",
       });
+
+      // 单条一键处理也生成一份“下载工具专用链接”
+      if (toolUrl) {
+        setBatchDownloadLinksForTool([toolUrl]);
+      } else {
+        setBatchDownloadLinksForTool([]);
+      }
 
       if (ok && downloadUrl) {
         alert("一键处理成功，已生成下载链接，可在底部“下载记录”中点击下载。");
@@ -544,6 +604,7 @@ async function handleProcess() {
     // 多条 URL：顺序批量执行
     let successCount = 0;
     let failCount = 0;
+    const toolLinks = [];
 
     for (const url of urls) {
       appendLog(`开始批量一键处理：${url}`);
@@ -561,6 +622,8 @@ async function handleProcess() {
 
         const ok = data && data.success;
         const downloadUrl = data && data.downloadUrl;
+        const toolUrl =
+          ok && downloadUrl ? buildToolFriendlyDownloadUrl(downloadUrl, url) : "";
 
         addHistoryRecord({
           type: "process-batch",
@@ -571,6 +634,9 @@ async function handleProcess() {
 
         if (ok) {
           successCount += 1;
+          if (toolUrl) {
+            toolLinks.push(toolUrl);
+          }
         } else {
           failCount += 1;
         }
@@ -584,6 +650,9 @@ async function handleProcess() {
         failCount += 1;
       }
     }
+
+    // 批量任务结束后，把所有成功条目的“下载工具专用链接”写到文本框中
+    setBatchDownloadLinksForTool(toolLinks);
 
     alert(
       `批量一键处理完成：成功 ${successCount} 条，失败/异常 ${failCount} 条。\n详细结果请查看下方“下载记录”和日志。`
@@ -615,6 +684,32 @@ function bindEvents() {
   document.getElementById("btnProcess")?.addEventListener("click", () => {
     handleProcess();
   });
+
+  document
+    .getElementById("btnCopyBatchLinksForTool")
+    ?.addEventListener("click", async () => {
+      const textarea = document.getElementById("batchDownloadLinksForTool");
+      if (!textarea) return;
+      const text = textarea.value.trim();
+      if (!text) {
+        alert("当前没有可复制的下载链接。请先执行一键处理。");
+        return;
+      }
+
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          // 兼容一些旧环境
+          textarea.select();
+          document.execCommand("copy");
+        }
+        alert("已复制全部下载链接到剪贴板，可直接粘贴到你的下载工具。");
+      } catch (e) {
+        console.error("复制下载链接失败：", e);
+        alert("复制失败，请手动选中并复制文本框中的内容。");
+      }
+    });
 
   document.getElementById("btnClearLog")?.addEventListener("click", () => {
     const logEl = document.getElementById("logOutput");
