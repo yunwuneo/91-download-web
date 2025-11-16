@@ -12,8 +12,8 @@
   />
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body class="bg-dark text-light">
-  <div class="container py-4">
+<body>
+  <div class="container app-shell py-4">
     <h1 class="mb-3 text-center">91 Download Web UI</h1>
     <p class="text-center text-secondary mb-4">
       基于 <code>91-download-api</code> 的视频解析与下载前端界面
@@ -22,8 +22,16 @@
 
     <!-- 全局配置 -->
     <div class="card mb-3 shadow-sm">
-      <div class="card-header bg-secondary text-light">
-        全局配置
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>全局配置</span>
+        <div class="btn-group btn-group-sm">
+          <button id="btnSaveConfig" class="btn btn-outline-light">
+            保存配置到本地
+          </button>
+          <button id="btnClearConfig" class="btn btn-outline-danger">
+            清除本地配置
+          </button>
+        </div>
       </div>
       <div class="card-body">
         <div class="row g-3">
@@ -63,160 +71,364 @@
       </div>
     </div>
 
-    <!-- 一键流程：解析 + 下载 + 存储 -->
+    <!-- 主操作区：一键处理 / 仅解析 / 仅下载（标签页） -->
     <div class="card mb-3 shadow-sm">
-      <div class="card-header bg-primary text-light">
-        一键处理（解析 + 下载 + 存储） - POST /api/process
+      <div class="card-header">
+        <ul class="nav nav-tabs border-0" id="mainTab">
+          <li class="nav-item">
+            <button
+              class="nav-link active"
+              type="button"
+              data-tab-target="#tab-process"
+            >
+              一键处理
+            </button>
+          </li>
+          <li class="nav-item">
+            <button
+              class="nav-link"
+              type="button"
+              data-tab-target="#tab-parse"
+            >
+              仅解析 M3U8
+            </button>
+          </li>
+          <li class="nav-item">
+            <button
+              class="nav-link"
+              type="button"
+              data-tab-target="#tab-download"
+            >
+              仅下载 M3U8
+            </button>
+          </li>
+        </ul>
       </div>
       <div class="card-body">
-        <div class="row g-3 align-items-end">
-          <div class="col-md-6">
-            <label class="form-label">页面 URL（目前支持 hsex.men）</label>
-            <input
-              id="processPageUrl"
-              type="text"
-              class="form-control"
-              placeholder="例如：https://hsex.men/..."
-            />
-          </div>
-          <div class="col-md-3">
-            <label class="form-label">输出目录（可选）</label>
-            <input
-              id="processOutputDir"
-              type="text"
-              class="form-control"
-              placeholder="留空则使用全局默认或后端默认"
-            />
-          </div>
-          <div class="col-md-3 d-grid">
-            <button id="btnProcess" class="btn btn-primary">
-              开始一键处理
-            </button>
-          </div>
-        </div>
-
-        <div class="mt-3">
-          <label class="form-label">存储方式（storage）</label>
-          <div class="row g-2">
-            <div class="col-md-3">
-              <select id="processStorageType" class="form-select">
-                <option value="local" selected>本地（local）</option>
-                <option value="custom">自定义 JSON</option>
-              </select>
-            </div>
-            <div class="col-md-9">
+        <!-- 一键处理：解析 + 下载 + 存储 -->
+        <div id="tab-process" class="tab-pane active">
+          <div class="row g-3 align-items-end">
+            <div class="col-md-6">
+              <label class="form-label">页面 URL（支持单个或批量，每行一个，当前仅支持 hsex.men）</label>
               <textarea
-                id="processStorageJson"
+                id="processPageUrl"
                 class="form-control small-textarea"
-                placeholder='当选择“自定义 JSON”时，在此粘贴完整 storage 对象，例如：
-{
-  "type": "s3",
-  "region": "us-east-1",
-  "bucket": "your-bucket",
-  "key": "path/in/bucket/video.ts",
-  "accessKeyId": "YOUR_ACCESS_KEY",
-  "secretAccessKey": "YOUR_SECRET_KEY"
-}'
+                placeholder="可输入一个或多个页面 URL，每行一个，例如：&#10;https://hsex.men/xxx&#10;https://hsex.men/yyy"
               ></textarea>
-              <div class="form-text text-info">
-                默认仅使用 <code>{"type":"local"}</code>；如需 S3/WebDAV/FTP，可切换为“自定义 JSON”并粘贴完整配置。
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">输出目录（可选）</label>
+              <input
+                id="processOutputDir"
+                type="text"
+                class="form-control"
+                placeholder="留空则使用全局默认或后端默认"
+              />
+            </div>
+            <div class="col-md-3 d-grid">
+              <button id="btnProcess" class="btn btn-primary">
+                开始一键处理
+              </button>
+            </div>
+          </div>
+
+          <div class="mt-3">
+            <label class="form-label">存储方式（storage）</label>
+            <div class="row g-3">
+              <div class="col-md-3">
+                <select id="processStorageType" class="form-select storage-type-select" data-context="process">
+                  <option value="local" selected>本地（local）</option>
+                  <option value="s3">S3</option>
+                  <option value="webdav">WebDAV</option>
+                  <option value="ftp">FTP</option>
+                </select>
+              </div>
+              <div class="col-md-9">
+                <!-- local 提示 -->
+                <div class="storage-section" data-context="process" data-type="local">
+                  <div class="form-text text-info">
+                    默认使用 <code>{"type":"local"}</code>，文件保存在后端本地，并返回一次性下载链接。
+                  </div>
+                </div>
+
+                <!-- S3 配置 -->
+                <div class="storage-section d-none" data-context="process" data-type="s3">
+                  <div class="row g-2 mb-2">
+                    <div class="col-md-4">
+                      <label class="form-label">Region</label>
+                      <input id="processStorageS3Region" type="text" class="form-control" placeholder="us-east-1" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Bucket</label>
+                      <input id="processStorageS3Bucket" type="text" class="form-control" placeholder="your-bucket" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Key</label>
+                      <input id="processStorageS3Key" type="text" class="form-control" placeholder="path/in/bucket/video.ts" />
+                    </div>
+                  </div>
+                  <div class="row g-2 mb-2">
+                    <div class="col-md-6">
+                      <label class="form-label">Access Key ID</label>
+                      <input id="processStorageS3AccessKeyId" type="text" class="form-control" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Secret Access Key</label>
+                      <input id="processStorageS3SecretAccessKey" type="password" class="form-control" />
+                    </div>
+                  </div>
+                  <div class="row g-2 align-items-center">
+                    <div class="col-md-8">
+                      <label class="form-label">Endpoint（可选）</label>
+                      <input id="processStorageS3Endpoint" type="text" class="form-control" placeholder="https://s3.your-provider.com" />
+                    </div>
+                    <div class="col-md-4 form-check mt-3">
+                      <input id="processStorageS3ForcePathStyle" class="form-check-input" type="checkbox" />
+                      <label class="form-check-label" for="processStorageS3ForcePathStyle">
+                        forcePathStyle
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- WebDAV 配置 -->
+                <div class="storage-section d-none" data-context="process" data-type="webdav">
+                  <div class="row g-2 mb-2">
+                    <div class="col-md-6">
+                      <label class="form-label">URL</label>
+                      <input id="processStorageWebdavUrl" type="text" class="form-control" placeholder="https://webdav.example.com" />
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label">用户名</label>
+                      <input id="processStorageWebdavUsername" type="text" class="form-control" />
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label">密码</label>
+                      <input id="processStorageWebdavPassword" type="password" class="form-control" />
+                    </div>
+                  </div>
+                  <div class="row g-2">
+                    <div class="col-12">
+                      <label class="form-label">远程路径</label>
+                      <input id="processStorageWebdavRemotePath" type="text" class="form-control" placeholder="/path/on/server/video.ts" />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- FTP 配置 -->
+                <div class="storage-section d-none" data-context="process" data-type="ftp">
+                  <div class="row g-2 mb-2">
+                    <div class="col-md-4">
+                      <label class="form-label">Host</label>
+                      <input id="processStorageFtpHost" type="text" class="form-control" placeholder="ftp.example.com" />
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label">Port</label>
+                      <input id="processStorageFtpPort" type="number" class="form-control" placeholder="21" />
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label">User</label>
+                      <input id="processStorageFtpUser" type="text" class="form-control" />
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label">Password</label>
+                      <input id="processStorageFtpPassword" type="password" class="form-control" />
+                    </div>
+                  </div>
+                  <div class="row g-2 align-items-center">
+                    <div class="col-md-6">
+                      <label class="form-label">远程路径</label>
+                      <input id="processStorageFtpRemotePath" type="text" class="form-control" placeholder="/path/on/server/video.ts" />
+                    </div>
+                    <div class="col-md-3 form-check mt-3">
+                      <input id="processStorageFtpSecure" class="form-check-input" type="checkbox" />
+                      <label class="form-check-label" for="processStorageFtpSecure">
+                        secure
+                      </label>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
 
-    <!-- 仅解析 M3U8 -->
-    <div class="card mb-3 shadow-sm">
-      <div class="card-header bg-success text-light">
-        仅解析 M3U8 - POST /api/parse
-      </div>
-      <div class="card-body">
-        <div class="row g-3 align-items-end">
-          <div class="col-md-8">
-            <label class="form-label">页面 URL</label>
-            <input
-              id="parsePageUrl"
-              type="text"
-              class="form-control"
-              placeholder="例如：https://hsex.men/..."
-            />
-          </div>
-          <div class="col-md-4 d-grid">
-            <button id="btnParse" class="btn btn-success">
-              开始解析
-            </button>
-          </div>
-        </div>
-        <div class="mt-3">
-          <label class="form-label">解析结果（M3U8 列表）</label>
-          <textarea
-            id="parseResult"
-            class="form-control small-textarea"
-            readonly
-          ></textarea>
-          <div class="form-text text-info">
-            可从中复制一个 M3U8 URL，用于下面的“仅下载”。
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 仅下载 M3U8 -->
-    <div class="card mb-3 shadow-sm">
-      <div class="card-header bg-warning text-dark">
-        仅下载 M3U8 - POST /api/download
-      </div>
-      <div class="card-body">
-        <div class="row g-3 align-items-end">
-          <div class="col-md-6">
-            <label class="form-label">M3U8 URL</label>
-            <input
-              id="downloadM3u8Url"
-              type="text"
-              class="form-control"
-              placeholder="例如：https://example.com/file.m3u8"
-            />
-          </div>
-          <div class="col-md-3">
-            <label class="form-label">输出目录（可选）</label>
-            <input
-              id="downloadOutputDir"
-              type="text"
-              class="form-control"
-              placeholder="留空则使用全局默认或后端默认"
-            />
-          </div>
-          <div class="col-md-3 d-grid">
-            <button id="btnDownload" class="btn btn-warning">
-              开始下载
-            </button>
-          </div>
-        </div>
-
-        <div class="mt-3">
-          <label class="form-label">存储方式（storage）</label>
-          <div class="row g-2">
-            <div class="col-md-3">
-              <select id="downloadStorageType" class="form-select">
-                <option value="local" selected>本地（local）</option>
-                <option value="custom">自定义 JSON</option>
-              </select>
+        <!-- 仅解析 M3U8 -->
+        <div id="tab-parse" class="tab-pane d-none">
+          <div class="row g-3 align-items-end">
+            <div class="col-md-8">
+              <label class="form-label">页面 URL</label>
+              <input
+                id="parsePageUrl"
+                type="text"
+                class="form-control"
+                placeholder="例如：https://hsex.men/..."
+              />
             </div>
-            <div class="col-md-9">
-              <textarea
-                id="downloadStorageJson"
-                class="form-control small-textarea"
-                placeholder='当选择“自定义 JSON”时，在此粘贴完整 storage 对象，例如：
-{
-  "type": "webdav",
-  "url": "https://webdav.example.com",
-  "username": "user",
-  "password": "pass",
-  "remotePath": "/path/on/server/video.ts"
-}'
-              ></textarea>
+            <div class="col-md-4 d-grid">
+              <button id="btnParse" class="btn btn-success">
+                开始解析
+              </button>
+            </div>
+          </div>
+          <div class="mt-3">
+            <label class="form-label">解析结果（M3U8 列表）</label>
+            <textarea
+              id="parseResult"
+              class="form-control small-textarea"
+              readonly
+            ></textarea>
+            <div class="form-text text-info">
+              可从中复制一个 M3U8 URL，用于“仅下载 M3U8”。
+            </div>
+          </div>
+        </div>
+
+        <!-- 仅下载 M3U8 -->
+        <div id="tab-download" class="tab-pane d-none">
+          <div class="row g-3 align-items-end">
+            <div class="col-md-6">
+              <label class="form-label">M3U8 URL</label>
+              <input
+                id="downloadM3u8Url"
+                type="text"
+                class="form-control"
+                placeholder="例如：https://example.com/file.m3u8"
+              />
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">输出目录（可选）</label>
+              <input
+                id="downloadOutputDir"
+                type="text"
+                class="form-control"
+                placeholder="留空则使用全局默认或后端默认"
+              />
+            </div>
+            <div class="col-md-3 d-grid">
+              <button id="btnDownload" class="btn btn-warning">
+                开始下载
+              </button>
+            </div>
+          </div>
+
+          <div class="mt-3">
+            <label class="form-label">存储方式（storage）</label>
+            <div class="row g-3">
+              <div class="col-md-3">
+                <select id="downloadStorageType" class="form-select storage-type-select" data-context="download">
+                  <option value="local" selected>本地（local）</option>
+                  <option value="s3">S3</option>
+                  <option value="webdav">WebDAV</option>
+                  <option value="ftp">FTP</option>
+                </select>
+              </div>
+              <div class="col-md-9">
+                <!-- local 提示 -->
+                <div class="storage-section" data-context="download" data-type="local">
+                  <div class="form-text text-info">
+                    默认使用 <code>{"type":"local"}</code>，文件保存在后端本地，并返回一次性下载链接。
+                  </div>
+                </div>
+
+                <!-- S3 配置 -->
+                <div class="storage-section d-none" data-context="download" data-type="s3">
+                  <div class="row g-2 mb-2">
+                    <div class="col-md-4">
+                      <label class="form-label">Region</label>
+                      <input id="downloadStorageS3Region" type="text" class="form-control" placeholder="us-east-1" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Bucket</label>
+                      <input id="downloadStorageS3Bucket" type="text" class="form-control" placeholder="your-bucket" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Key</label>
+                      <input id="downloadStorageS3Key" type="text" class="form-control" placeholder="path/in/bucket/video.ts" />
+                    </div>
+                  </div>
+                  <div class="row g-2 mb-2">
+                    <div class="col-md-6">
+                      <label class="form-label">Access Key ID</label>
+                      <input id="downloadStorageS3AccessKeyId" type="text" class="form-control" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Secret Access Key</label>
+                      <input id="downloadStorageS3SecretAccessKey" type="password" class="form-control" />
+                    </div>
+                  </div>
+                  <div class="row g-2 align-items-center">
+                    <div class="col-md-8">
+                      <label class="form-label">Endpoint（可选）</label>
+                      <input id="downloadStorageS3Endpoint" type="text" class="form-control" placeholder="https://s3.your-provider.com" />
+                    </div>
+                    <div class="col-md-4 form-check mt-3">
+                      <input id="downloadStorageS3ForcePathStyle" class="form-check-input" type="checkbox" />
+                      <label class="form-check-label" for="downloadStorageS3ForcePathStyle">
+                        forcePathStyle
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- WebDAV 配置 -->
+                <div class="storage-section d-none" data-context="download" data-type="webdav">
+                  <div class="row g-2 mb-2">
+                    <div class="col-md-6">
+                      <label class="form-label">URL</label>
+                      <input id="downloadStorageWebdavUrl" type="text" class="form-control" placeholder="https://webdav.example.com" />
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label">用户名</label>
+                      <input id="downloadStorageWebdavUsername" type="text" class="form-control" />
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label">密码</label>
+                      <input id="downloadStorageWebdavPassword" type="password" class="form-control" />
+                    </div>
+                  </div>
+                  <div class="row g-2">
+                    <div class="col-12">
+                      <label class="form-label">远程路径</label>
+                      <input id="downloadStorageWebdavRemotePath" type="text" class="form-control" placeholder="/path/on/server/video.ts" />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- FTP 配置 -->
+                <div class="storage-section d-none" data-context="download" data-type="ftp">
+                  <div class="row g-2 mb-2">
+                    <div class="col-md-4">
+                      <label class="form-label">Host</label>
+                      <input id="downloadStorageFtpHost" type="text" class="form-control" placeholder="ftp.example.com" />
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label">Port</label>
+                      <input id="downloadStorageFtpPort" type="number" class="form-control" placeholder="21" />
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label">User</label>
+                      <input id="downloadStorageFtpUser" type="text" class="form-control" />
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label">Password</label>
+                      <input id="downloadStorageFtpPassword" type="password" class="form-control" />
+                    </div>
+                  </div>
+                  <div class="row g-2 align-items-center">
+                    <div class="col-md-6">
+                      <label class="form-label">远程路径</label>
+                      <input id="downloadStorageFtpRemotePath" type="text" class="form-control" placeholder="/path/on/server/video.ts" />
+                    </div>
+                    <div class="col-md-3 form-check mt-3">
+                      <input id="downloadStorageFtpSecure" class="form-check-input" type="checkbox" />
+                      <label class="form-check-label" for="downloadStorageFtpSecure">
+                        secure
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -227,7 +439,7 @@
     <div class="row g-3 mb-3">
       <div class="col-md-4">
         <div class="card shadow-sm h-100">
-          <div class="card-header bg-info text-dark d-flex justify-content-between align-items-center">
+          <div class="card-header d-flex justify-content-between align-items-center">
             健康检查 - GET /health
             <button id="btnHealth" class="btn btn-sm btn-outline-dark">
               检查
@@ -240,7 +452,7 @@
       </div>
       <div class="col-md-8">
         <div class="card shadow-sm h-100">
-          <div class="card-header bg-secondary text-light d-flex justify-content-between align-items-center">
+          <div class="card-header d-flex justify-content-between align-items-center">
             请求 / 响应日志
             <button id="btnClearLog" class="btn btn-sm btn-outline-light">
               清空日志
@@ -255,7 +467,7 @@
 
     <!-- 简易下载历史 -->
     <div class="card mb-3 shadow-sm">
-      <div class="card-header bg-dark text-light">
+      <div class="card-header">
         下载记录（本页面会话内）
       </div>
       <div class="card-body">
