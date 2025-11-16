@@ -244,15 +244,31 @@ function guessFilenameFromPageUrl(pageUrl) {
 
 /**
  * 构造“下载工具专用链接”，在原 downloadUrl 末尾附加文件名
- * 例如： http://localhost:3005/29ie  ->  http://localhost:3005/29ie/xxxxx.ts
- * 注意：这里假设后端路由只依赖前半段（例如 /29ie），会忽略末尾的文件名部分
+ * 优先使用 /api/process 返回的 storage.filename，其次才根据页面 URL 猜测
+ * 例如：
+ *   downloadUrl: https://91api.yunwuneo.com/files/1763275094786-9wp6wd
+ *   storage.filename: 123.ts
+ *   => https://91api.yunwuneo.com/files/1763275094786-9wp6wd/123.ts
+ *
+ * 注意：这里假设后端路由只依赖前半段（例如 /xxxx），会忽略末尾的文件名部分
  */
-function buildToolFriendlyDownloadUrl(downloadUrl, pageUrl) {
+function buildToolFriendlyDownloadUrl(downloadUrl, pageUrl, storageInfo) {
   if (!downloadUrl) return "";
   const base = downloadUrl.replace(/\/+$/, "");
-  const filename = guessFilenameFromPageUrl(pageUrl);
-  // 默认用 .ts，你也可以按需改成 .mp4
-  return `${base}/${encodeURIComponent(filename)}.ts`;
+
+  // 优先使用后端返回的 storage.filename
+  let filename =
+    storageInfo && typeof storageInfo.filename === "string" && storageInfo.filename.trim()
+      ? storageInfo.filename.trim()
+      : "";
+
+  // 如果没有 filename，则回退到根据页面 URL 猜一个 .ts 文件名（保持与旧逻辑兼容）
+  if (!filename) {
+    const slug = guessFilenameFromPageUrl(pageUrl);
+    filename = `${slug}.ts`;
+  }
+
+  return `${base}/${encodeURIComponent(filename)}`;
 }
 
 /**
@@ -574,8 +590,9 @@ async function handleProcess() {
 
       const ok = data && data.success;
       const downloadUrl = data && data.downloadUrl;
+      const storageInfo = data && data.storage;
       const toolUrl =
-        ok && downloadUrl ? buildToolFriendlyDownloadUrl(downloadUrl, url) : "";
+        ok && downloadUrl ? buildToolFriendlyDownloadUrl(downloadUrl, url, storageInfo) : "";
 
       addHistoryRecord({
         type: "process",
@@ -622,8 +639,9 @@ async function handleProcess() {
 
         const ok = data && data.success;
         const downloadUrl = data && data.downloadUrl;
+        const storageInfo = data && data.storage;
         const toolUrl =
-          ok && downloadUrl ? buildToolFriendlyDownloadUrl(downloadUrl, url) : "";
+          ok && downloadUrl ? buildToolFriendlyDownloadUrl(downloadUrl, url, storageInfo) : "";
 
         addHistoryRecord({
           type: "process-batch",
