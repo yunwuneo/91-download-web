@@ -138,6 +138,98 @@ function appendLog(message, type = "info") {
   saveLogItemToLocalStorage({ time, type, message });
 }
 
+const HISTORY_PAGE_SIZE = 10;
+let historyRecords = [];
+let historyCurrentPage = 1;
+
+function renderHistoryTable() {
+  const tbody = document.getElementById("historyTableBody");
+  const infoEl = document.getElementById("historyPaginationInfo");
+  const paginationEl = document.getElementById("historyPagination");
+  if (!tbody) return;
+
+  const total = historyRecords.length;
+  const totalPages = total === 0 ? 1 : Math.ceil(total / HISTORY_PAGE_SIZE);
+
+  if (historyCurrentPage < 1) historyCurrentPage = 1;
+  if (historyCurrentPage > totalPages) historyCurrentPage = totalPages;
+
+  tbody.innerHTML = "";
+
+  if (total === 0) {
+    if (infoEl) {
+      infoEl.textContent = "暂无下载记录";
+    }
+    if (paginationEl) {
+      paginationEl.innerHTML = "";
+    }
+    return;
+  }
+
+  const start = (historyCurrentPage - 1) * HISTORY_PAGE_SIZE;
+  const end = Math.min(start + HISTORY_PAGE_SIZE, total);
+  const pageItems = historyRecords.slice(start, end);
+
+  pageItems.forEach((record) => {
+    const { type, source, status, downloadUrl, time } = record || {};
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${time || ""}</td>
+      <td>${type || ""}</td>
+      <td class="text-truncate" style="max-width: 260px;" title="${source || ""}">
+        ${source || ""}
+      </td>
+      <td>${status || ""}</td>
+      <td>
+        ${
+          downloadUrl
+            ? `<a href="${downloadUrl}" target="_blank" rel="noreferrer" class="btn btn-sm btn-outline-success">下载</a>`
+            : "-"
+        }
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  if (infoEl) {
+    infoEl.textContent = `第 ${historyCurrentPage}/${totalPages} 页，共 ${total} 条`;
+  }
+
+  if (!paginationEl) return;
+
+  paginationEl.innerHTML = "";
+  if (totalPages <= 1) return;
+
+  function createPageItem(label, page, disabled, active) {
+    const li = document.createElement("li");
+    li.className = "page-item";
+    if (disabled) li.classList.add("disabled");
+    if (active) li.classList.add("active");
+
+    const a = document.createElement("button");
+    a.type = "button";
+    a.className = "page-link";
+    a.textContent = label;
+    if (!disabled && !active) {
+      a.addEventListener("click", () => {
+        historyCurrentPage = page;
+        renderHistoryTable();
+      });
+    }
+
+    li.appendChild(a);
+    paginationEl.appendChild(li);
+  }
+
+  createPageItem("«", historyCurrentPage - 1, historyCurrentPage === 1, false);
+
+  for (let p = 1; p <= totalPages; p++) {
+    createPageItem(String(p), p, false, p === historyCurrentPage);
+  }
+
+  createPageItem("»", historyCurrentPage + 1, historyCurrentPage === totalPages, false);
+}
+
 /**
  * 将下载记录保存到 localStorage
  */
@@ -166,9 +258,9 @@ function loadHistoryFromLocalStorage() {
     const list = JSON.parse(raw);
     if (!Array.isArray(list)) return;
 
-    list.forEach((record) => {
-      addHistoryRecord(record, { skipSave: true });
-    });
+    historyRecords = list;
+    historyCurrentPage = 1;
+    renderHistoryTable();
   } catch (e) {
     console.error("从本地加载下载记录失败：", e);
   }
@@ -179,38 +271,25 @@ function loadHistoryFromLocalStorage() {
  */
 function addHistoryRecord({ type, source, status, downloadUrl, time }, options = {}) {
   const { skipSave } = options || {};
-  const tbody = document.getElementById("historyTableBody");
-  if (!tbody) return;
-
-  const tr = document.createElement("tr");
   const timeStr = time || new Date().toLocaleString();
 
-  tr.innerHTML = `
-    <td>${timeStr}</td>
-    <td>${type}</td>
-    <td class="text-truncate" style="max-width: 260px;" title="${source || ""}">
-      ${source || ""}
-    </td>
-    <td>${status}</td>
-    <td>
-      ${
-        downloadUrl
-          ? `<a href="${downloadUrl}" target="_blank" rel="noreferrer" class="btn btn-sm btn-outline-success">下载</a>`
-          : "-"
-      }
-    </td>
-  `;
+  const record = {
+    type,
+    source,
+    status,
+    downloadUrl: downloadUrl || "",
+    time: timeStr,
+  };
 
-  tbody.prepend(tr);
+  historyRecords.unshift(record);
+  if (historyRecords.length > 200) {
+    historyRecords.splice(200);
+  }
+  historyCurrentPage = 1;
+  renderHistoryTable();
 
   if (!skipSave) {
-    saveHistoryRecordToLocalStorage({
-      type,
-      source,
-      status,
-      downloadUrl: downloadUrl || "",
-      time: timeStr,
-    });
+    saveHistoryRecordToLocalStorage(record);
   }
 }
 
