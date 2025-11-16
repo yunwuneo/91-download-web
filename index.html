@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>91 Download Web UI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+    crossorigin="anonymous"
+  />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="bg-dark text-light">
+  <div class="container py-4">
+    <h1 class="mb-3 text-center">91 Download Web UI</h1>
+    <p class="text-center text-secondary mb-4">
+      基于 <code>91-download-api</code> 的视频解析与下载前端界面
+      （参考后端项目：<a href="https://github.com/yunwuneo/91-download-api" target="_blank" rel="noreferrer">91-download-api</a>）
+    </p>
+
+    <!-- 全局配置 -->
+    <div class="card mb-3 shadow-sm">
+      <div class="card-header bg-secondary text-light">
+        全局配置
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">API 基础地址</label>
+            <input
+              id="apiBaseUrl"
+              type="text"
+              class="form-control"
+              placeholder="例如：http://localhost:3005"
+              value="http://localhost:3005"
+            />
+            <div class="form-text text-warning">
+              末尾不要加斜杠 /
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">API Token（可选）</label>
+            <input
+              id="apiToken"
+              type="text"
+              class="form-control"
+              placeholder="与后端 .env 中 API_TOKEN 一致；未配置则可留空"
+            />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">默认输出目录</label>
+            <input
+              id="defaultOutputDir"
+              type="text"
+              class="form-control"
+              placeholder="默认 data"
+              value="data"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 一键流程：解析 + 下载 + 存储 -->
+    <div class="card mb-3 shadow-sm">
+      <div class="card-header bg-primary text-light">
+        一键处理（解析 + 下载 + 存储） - POST /api/process
+      </div>
+      <div class="card-body">
+        <div class="row g-3 align-items-end">
+          <div class="col-md-6">
+            <label class="form-label">页面 URL（目前支持 hsex.men）</label>
+            <input
+              id="processPageUrl"
+              type="text"
+              class="form-control"
+              placeholder="例如：https://hsex.men/..."
+            />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">输出目录（可选）</label>
+            <input
+              id="processOutputDir"
+              type="text"
+              class="form-control"
+              placeholder="留空则使用全局默认或后端默认"
+            />
+          </div>
+          <div class="col-md-3 d-grid">
+            <button id="btnProcess" class="btn btn-primary">
+              开始一键处理
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-3">
+          <label class="form-label">存储方式（storage）</label>
+          <div class="row g-2">
+            <div class="col-md-3">
+              <select id="processStorageType" class="form-select">
+                <option value="local" selected>本地（local）</option>
+                <option value="custom">自定义 JSON</option>
+              </select>
+            </div>
+            <div class="col-md-9">
+              <textarea
+                id="processStorageJson"
+                class="form-control small-textarea"
+                placeholder='当选择“自定义 JSON”时，在此粘贴完整 storage 对象，例如：
+{
+  "type": "s3",
+  "region": "us-east-1",
+  "bucket": "your-bucket",
+  "key": "path/in/bucket/video.ts",
+  "accessKeyId": "YOUR_ACCESS_KEY",
+  "secretAccessKey": "YOUR_SECRET_KEY"
+}'
+              ></textarea>
+              <div class="form-text text-info">
+                默认仅使用 <code>{"type":"local"}</code>；如需 S3/WebDAV/FTP，可切换为“自定义 JSON”并粘贴完整配置。
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 仅解析 M3U8 -->
+    <div class="card mb-3 shadow-sm">
+      <div class="card-header bg-success text-light">
+        仅解析 M3U8 - POST /api/parse
+      </div>
+      <div class="card-body">
+        <div class="row g-3 align-items-end">
+          <div class="col-md-8">
+            <label class="form-label">页面 URL</label>
+            <input
+              id="parsePageUrl"
+              type="text"
+              class="form-control"
+              placeholder="例如：https://hsex.men/..."
+            />
+          </div>
+          <div class="col-md-4 d-grid">
+            <button id="btnParse" class="btn btn-success">
+              开始解析
+            </button>
+          </div>
+        </div>
+        <div class="mt-3">
+          <label class="form-label">解析结果（M3U8 列表）</label>
+          <textarea
+            id="parseResult"
+            class="form-control small-textarea"
+            readonly
+          ></textarea>
+          <div class="form-text text-info">
+            可从中复制一个 M3U8 URL，用于下面的“仅下载”。
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 仅下载 M3U8 -->
+    <div class="card mb-3 shadow-sm">
+      <div class="card-header bg-warning text-dark">
+        仅下载 M3U8 - POST /api/download
+      </div>
+      <div class="card-body">
+        <div class="row g-3 align-items-end">
+          <div class="col-md-6">
+            <label class="form-label">M3U8 URL</label>
+            <input
+              id="downloadM3u8Url"
+              type="text"
+              class="form-control"
+              placeholder="例如：https://example.com/file.m3u8"
+            />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">输出目录（可选）</label>
+            <input
+              id="downloadOutputDir"
+              type="text"
+              class="form-control"
+              placeholder="留空则使用全局默认或后端默认"
+            />
+          </div>
+          <div class="col-md-3 d-grid">
+            <button id="btnDownload" class="btn btn-warning">
+              开始下载
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-3">
+          <label class="form-label">存储方式（storage）</label>
+          <div class="row g-2">
+            <div class="col-md-3">
+              <select id="downloadStorageType" class="form-select">
+                <option value="local" selected>本地（local）</option>
+                <option value="custom">自定义 JSON</option>
+              </select>
+            </div>
+            <div class="col-md-9">
+              <textarea
+                id="downloadStorageJson"
+                class="form-control small-textarea"
+                placeholder='当选择“自定义 JSON”时，在此粘贴完整 storage 对象，例如：
+{
+  "type": "webdav",
+  "url": "https://webdav.example.com",
+  "username": "user",
+  "password": "pass",
+  "remotePath": "/path/on/server/video.ts"
+}'
+              ></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 健康检查 & 日志输出 -->
+    <div class="row g-3 mb-3">
+      <div class="col-md-4">
+        <div class="card shadow-sm h-100">
+          <div class="card-header bg-info text-dark d-flex justify-content-between align-items-center">
+            健康检查 - GET /health
+            <button id="btnHealth" class="btn btn-sm btn-outline-dark">
+              检查
+            </button>
+          </div>
+          <div class="card-body">
+            <pre id="healthResult" class="small mb-0 text-wrap"></pre>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-8">
+        <div class="card shadow-sm h-100">
+          <div class="card-header bg-secondary text-light d-flex justify-content-between align-items-center">
+            请求 / 响应日志
+            <button id="btnClearLog" class="btn btn-sm btn-outline-light">
+              清空日志
+            </button>
+          </div>
+          <div class="card-body log-container">
+            <pre id="logOutput" class="small mb-0"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 简易下载历史 -->
+    <div class="card mb-3 shadow-sm">
+      <div class="card-header bg-dark text-light">
+        下载记录（本页面会话内）
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-dark table-striped align-middle mb-0">
+            <thead>
+              <tr>
+                <th>时间</th>
+                <th>类型</th>
+                <th>源</th>
+                <th>状态</th>
+                <th>下载链接</th>
+              </tr>
+            </thead>
+            <tbody id="historyTableBody">
+              <!-- 动态填充 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <footer class="text-center text-secondary mt-4 small">
+      前端 Web UI，仅作为 <code>91-download-api</code> 的可视化客户端使用。请确保本页面所在域名已被后端 CORS 允许。
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
+
+

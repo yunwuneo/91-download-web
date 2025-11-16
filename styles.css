@@ -1,0 +1,185 @@
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+    sans-serif;
+  background: radial-gradient(circle at top left, #ffffff 0, #f5f5f7 40%, #e5e5ea 100%);
+  color: #111827;
+  -webkit-font-smoothing: antialiased;
+}
+
+.container.app-shell {
+  max-width: 980px;
+}
+
+h1 {
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  font-size: 2.4rem;
+  margin-bottom: 0.5rem;
+}
+
+h1 + p {
+  color: #6b7280;
+  font-size: 0.95rem;
+}
+
+.small-textarea {
+  min-height: 120px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  font-size: 0.8rem;
+}
+
+/* 卡片整体风格：玻璃质感 + 大圆角，弱化 Bootstrap 自带配色 */
+.card {
+  border-radius: 18px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(20px);
+}
+
+.card-header {
+  background: transparent !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+  padding: 1.1rem 1.5rem;
+  font-weight: 550;
+  letter-spacing: 0.06em;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  color: #6b7280 !important;
+}
+
+.card-body {
+  padding: 1.5rem 1.6rem;
+}
+
+/* 覆盖 Bootstrap 的深色背景 / 文本色，使整体变成浅色系 */
+.bg-dark,
+.bg-secondary,
+.bg-primary,
+.bg-success,
+.bg-warning,
+.bg-info {
+  background-color: transparent !important;
+}
+
+.text-light,
+.text-dark,
+.text-secondary {
+  color: inherit !important;
+}
+
+/* 表格浅色化 */
+.table-dark {
+  --bs-table-bg: transparent;
+  --bs-table-striped-bg: rgba(15, 23, 42, 0.02);
+  --bs-table-striped-color: inherit;
+  --bs-table-color: inherit;
+}
+
+/* 表单控件：干净、轻边框 */
+.form-control,
+.form-select,
+textarea.form-control {
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.7);
+  background-color: rgba(255, 255, 255, 0.9);
+  box-shadow: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.form-control.small-textarea,
+textarea.form-control.small-textarea {
+  border-radius: 16px;
+}
+
+.form-control:focus,
+.form-select:focus,
+textarea.form-control:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.35);
+  outline: none;
+  background-color: #ffffff;
+}
+
+.form-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #6b7280;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.form-text {
+  font-size: 0.75rem;
+}
+
+/* 按钮：圆角 Pill 风格 */
+.btn {
+  border-radius: 999px;
+  padding-inline: 1.3rem;
+  padding-block: 0.55rem;
+  font-weight: 500;
+  font-size: 0.86rem;
+}
+
+.btn-primary,
+.btn-success,
+.btn-warning,
+.btn-info {
+  border: none;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.25);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #2563eb, #4f46e5);
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+}
+
+.btn-warning {
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  color: #fff !important;
+}
+
+.btn-outline-dark,
+.btn-outline-light {
+  border-radius: 999px;
+}
+
+/* 日志区域：浅底，但保持代码感 */
+.log-container {
+  max-height: 260px;
+  overflow-y: auto;
+  background: #020617;
+  border-radius: 14px;
+}
+
+#logOutput {
+  color: #e5e7eb;
+}
+
+.log-line-info {
+  color: #60a5fa;
+}
+
+.log-line-error {
+  color: #f97373;
+}
+
+.log-line-success {
+  color: #4ade80;
+}
+
+code {
+  color: #2563eb;
+  font-weight: 500;
+}
+
+footer {
+  opacity: 0.8;
+  color: #6b7280;
+}
+
